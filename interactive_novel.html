@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>灯影醉人，佳期如梦</title>
+    <style>
+        /* --- 基础和主题样式 --- */
+        :root {
+            --background-color: #1a1a1a;
+            --text-color: #e0e0e0;
+            --primary-color: #00aaff;
+            --option-border-color: #555;
+            --option-hover-bg: #333;
+            --font-family: 'Helvetica Neue', 'Arial', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            font-family: var(--font-family);
+            margin: 0;
+            padding: 2rem 1rem;
+            line-height: 1.8;
+            font-size: 16px;
+        }
+
+        /* --- 故事容器 --- */
+        #story-container {
+            max-width: 700px;
+            margin: 0 auto;
+            padding-bottom: 30vh;
+        }
+
+        /* --- 文本行样式 --- */
+        .text-line {
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+            margin: 1.5rem 0;
+        }
+
+        .text-line.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* --- 选项样式 (水平布局) --- */
+        .options-container {
+            margin-top: 1.5rem;
+            opacity: 0;
+            transition: opacity 0.8s ease-in 0.5s;
+            pointer-events: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .options-container.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .option {
+            padding: 0.8rem 1.2rem;
+            margin: 0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, border-color 0.3s, opacity 0.4s ease-out, transform 0.4s ease-out;
+            flex-shrink: 0;
+        }
+
+        .option:not(.selected-option):hover {
+            background-color: var(--option-hover-bg);
+            border-color: var(--primary-color);
+        }
+        
+        .option.fading-out {
+            opacity: 0;
+            transform: scale(0.95);
+            pointer-events: none;
+        }
+
+        .option.selected-option {
+            background-color: transparent;
+            color: #ffffff;
+            border-color: var(--primary-color);
+            font-weight: bold;
+            cursor: default;
+        }
+
+        /* --- 结局和重启按钮 --- */
+        .ending-block {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            border: 1px solid var(--primary-color);
+            border-radius: 8px;
+            background-color: rgba(0, 170, 255, 0.1);
+        }
+
+        .ending-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .ending-text {
+            font-style: italic;
+            white-space: pre-wrap; /* 保持结局文本中的换行 */
+        }
+        
+        #restart-container {
+            text-align: center;
+            margin-top: 2rem;
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
+        }
+        
+        #restart-container.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #restart-button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 1rem 2.5rem;
+            border-radius: 50px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        #restart-button:hover {
+            background-color: #33bbff;
+            transform: scale(1.05);
+        }
+
+        /* --- 移动端适配 --- */
+        @media (max-width: 600px) {
+            body {
+                padding: 1rem 0.5rem;
+                font-size: 15px;
+            }
+            .options-container {
+                gap: 0.5rem;
+            }
+            .option {
+                padding: 0.8rem 1rem;
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="story-container"></div>
+    <div id="restart-container">
+        <button id="restart-button">重新开始</button>
+    </div>
+
+    <script>
+        // --- 故事数据结构 (已根据 剧情.txt 更新) ---
+        const storyData = {
+            'start': {
+                text: [
+                    "时值上元佳节，京城华灯初上，亮如白昼。",
+                    "你，卫瑄，一位游学至此的年轻书生，怀揣着几分才情与不为人知的武艺，混迹在熙攘的人潮中。",
+                    "你家世平平，却胸有丘壑，渴望在这座天子脚下的繁华都市中，寻得自己的一席之地。",
+                    "灯火阑珊，人声鼎沸。舞龙的队伍在长街上翻腾，货郎的叫卖声不绝于耳，空气中弥漫着香烛与女儿家发间脂粉的混合气息。",
+                    "你无心于这些热闹，目光漫无目的地扫过，却在不经意间，被一道身影攫住了全部心神。",
+                    "就在不远处的一座灯谜台下，一位少女正驻足凝望。",
+                    "她身着一袭月白色的素雅长裙，宛如一朵于尘世中悄然绽放的白莲。",
+                    "她未施粉黛，却难掩其绝代风华，眉眼如画，肌肤胜雪，尤其那双清澈如秋水的眸子，仿佛能看透人心。",
+                    "身旁丫鬟打扮的少女正低声与她说着什么，她只是浅浅地笑着，那笑容清冷而疏离，却又带着致命的吸引力。",
+                    "你从周围人的窃窃私语中得知，她便是当朝礼部侍郎的独女，林梦儿，京城中有名的才女。",
+                    "你的心，在那一刻，不受控制地狂跳起来。",
+                    "你明白，若能得此佳人青睐，于你而言，无异于鱼跃龙门。",
+                    "此刻，你站在人群中，望着那道遥不可及的身影，命运的丝线，递到了你的手中。",
+                    "你决定："
+                ],
+                options: [
+                    { text: "文斗夺魁", nextNode: 'branch_A' },
+                    { text: "英雄救美", nextNode: 'branch_B' },
+                    { text: "不期而遇", nextNode: 'branch_C' }
+                ]
+            },
+
+            // --- 分支A: 文斗夺魁 ---
+            'branch_A': {
+                text: [
+                    "你选择了最符合你书生身份的方式。你整理了一下略有褶皱的青衫，深吸一口气，拨开人群，走向那座灯火通明的诗台。",
+                    "诗会的主题是“元夕”。台上已有几位才子卖弄文采，但你瞥见林梦儿只是静静地听着，那双美丽的眸子里，没有丝毫波澜。",
+                    "轮到你时，你从容登台，目光越过众人，径直望向林梦儿的方向。四目相接的瞬间，你看到了她眼中一闪而过的讶异。"
+                ],
+                options: [
+                    { text: "展露真才", nextNode: 'choice_A1' },
+                    { text: "剑走偏锋", nextNode: 'choice_A2' },
+                    { text: "行险一搏", nextNode: 'choice_A3' }
+                ]
+            },
+            'choice_A1': {
+                text: [
+                    "你胸有成竹，朗声开口：“东风夜放花千树，更吹落，星如雨。宝马雕车香满路。凤箫声动，玉壶光转，一夜鱼龙舞。”",
+                    "你的声音清朗，词句华美，瞬间便将元夕夜的繁华与绚烂描绘得淋漓尽致。",
+                    "你继续吟诵，目光却始终锁定着林梦儿：“蛾儿雪柳黄金缕，笑语盈盈暗香去。众里寻他千百度，蓦然回首，那人却在，灯火阑珊处。”",
+                    "最后一句，你的语气变得轻柔而悠长。你看到林梦儿的身体微微一颤，那双一直平静无波的眸子里，终于泛起了涟漪。",
+                    "全场爆发出雷鸣般的掌声。毫无疑问，你成了今夜诗会的魁首。",
+                    "在你下台后，一个清脆的声音叫住了你。“这位公子，请留步。” 正是林梦儿的贴身丫鬟。“我家小姐有请。”",
+                    "在丫鬟的引领下，你来到一处僻静的廊下。林梦儿正站在一株盛放的梅花树下，美得有些不真实。",
+                    "“小女子林梦儿，见过公子。”她微微屈膝一礼，“方才公子的词，当真是……石破天惊。尤其是最后一句，道尽了世间所有的寻觅与相逢。”",
+                    "你谦逊地回礼：“姑娘谬赞了。在下卫瑄，只是有感而发罢了。”",
+                    "“卫公子，”她抬起眼，眸中带着一丝好奇，“‘众里寻他千百度’，不知公子所寻的，是功名，还是知己？”"
+                ],
+                options: [
+                    { text: "坦诚心迹", nextNode: 'subchoice_A1_1' },
+                    { text: "含糊其辞", nextNode: 'subchoice_A1_2' },
+                    { text: "反问佳人", nextNode: 'subchoice_A1_3' }
+                ]
+            },
+            'subchoice_A1_1': { // 坦诚心迹 -> 结局：两情相悦
+                text: [
+                    "你凝视着她的双眼，决定勇敢一次：“功名利禄，不过是过眼云烟。人生在世，若能得一知己，方不负此生。方才在下于人群中，寻的，便是如姑娘这般，能懂词中意的解语花。”",
+                    "这番话大胆而直接，林梦儿的脸上瞬间飞起一抹红霞，连耳根都变得粉红。*【林梦儿好感度+15】*",
+                    "她沉默片刻，轻声说道：“卫公子……当真是个妙人。”",
+                    "她主动走近一步，梅花的冷香与她身上的女儿香混合在一起，钻入你的鼻腔，让你心神摇曳。“此地人多，不如……我们去前面的月湖边走走？”",
+                    "你们并肩走在湖边的石子路上，相谈甚欢。不知不觉，你们走到了一座无人小桥上。",
+                    "她停下脚步，侧过头看着你，灯火映在她眼中，亮得惊人。“卫公子，今日……梦儿很开心。”",
+                    "你看着她近在咫尺的、泛着水光的娇艳红唇，情不自禁地伸出手，轻轻握住了她放在桥栏上的柔荑。她浑身一颤，却没有抽回。",
+                    "你鼓起勇气，慢慢地、慢慢地向她凑近。她的呼吸变得急促，闭上了眼睛，长长的睫毛像蝶翼一般抖动着。"
+                ],
+                ending: {
+                    name: "结局：两情相悦",
+                    text: "你吻上了她的唇。\n\n那是一种难以言喻的柔软与香甜。起初只是轻轻的触碰，你感受到了她的紧张与期待，于是加深了这个吻。你的舌尖撬开她的贝齿，探入那从未被外人侵入过的温热领域。她的身体渐渐软化，无力地靠在你怀里，双手不自觉地抓紧了你的衣襟。\n\n这是一个漫长而深情的吻。分开后，她满脸绯红，娇喘吁吁地靠在你胸前，不敢看你。\n\n*【林梦儿好感度+30，总好感度达到65】*\n*【文采+10】*\n*【名声+20】*\n*【第一章结束】*"
+                }
+            },
+            'subchoice_A1_2': { // 含糊其辞 -> 结局：君子之交
+                text: [
+                    "你选择了更为稳妥的回答，你微微一笑：“所寻为何，在下自己也说不清。或许，只是为了寻一个答案，一个能让内心安定的归宿。”",
+                    "这个回答模棱两可，林梦儿静静地看着你，似乎在品味你话中的深意。*【林梦儿好感度+5】*",
+                    "片刻后，她点了点头，轻声道：“人活一世，能求得心安，便是最大的幸事了。卫公子小小年纪，便有如此感悟，小女子佩服。”",
+                    "她的语气客气而疏离，虽然带着赞许，却也无形中拉开了你们的距离。",
+                    "她没有再邀请你同行，只是又闲聊了几句，便以“夜深了”为由，带着丫鬟告辞离去。",
+                    "你站在原地，看着她窈窕的背影消失在人海中，心中有些怅然若失。"
+                ],
+                ending: {
+                    name: "结局：君子之交",
+                    text: "你赢得了诗会的魁首，也赢得了与林梦儿交谈的机会。她欣赏你的才华，却也仅止于欣赏。\n\n你们的交流如同隔着一层薄纱，客气有礼，却缺乏深入内心的可能。今夜，你只是她遇到的一个颇有才华的陌生人。\n\n*【林梦儿好感度+5，总好感度达到25】*\n*【文采+10】*\n*【名声+20】*\n*【第一章结束】*"
+                }
+            },
+            'subchoice_A1_3': { // 反问佳人 -> 结局：好事多磨
+                text: [
+                    "你心中一动，带着一丝戏谑的笑容，反问道：“那依姑娘之见，我所寻的，应该是什么呢？”",
+                    "林梦儿显然没料到你会如此反问，微微一怔，随即莞尔一笑，如冰雪初融。*【林梦儿好感度+10】*",
+                    "“卫公子倒是有趣，”她歪着头打量着你，“我猜，你既想寻功名，又不甘于只为功名。你想要的，是‘事了拂衣去’的潇洒，也是‘愿得一心人’的圆满。我说的，对吗？”",
+                    "你心中大为震动，郑重地对她深揖一躬：“姑娘真乃我之知己也！”",
+                    "她脸颊微红，轻声道：“公子过奖了……此地人多，若不嫌弃，可否随我到湖边一叙？”",
+
+                    "接下来的发展顺利，你们在月湖边相谈甚欢。当你们走到无人小桥上时，气氛变得暧昧。你握住她的手，她没有拒绝。你慢慢靠近她，她羞涩地闭上了眼睛。",
+                    "然而，就在你的唇即将触碰到她的双唇时，一声断喝从不远处传来：“大胆狂徒！竟敢对我家小姐无礼！”",
+                    "数名家丁手持棍棒冲了过来，为首的是一个管家模样的中年人。"
+                ],
+                ending: {
+                    name: "结局：好事多磨",
+                    text: "你和林梦儿都被这突如其来的变故惊得分开了。她又羞又急，连忙解释却不被理会。\n\n眼看一场冲突在所难免，你虽有武艺却不能在此刻暴露。你只能眼睁睁地看着林梦儿被焦急的家丁们“保护”着，匆匆离去。她频频回头望你，眼中满是歉意与担忧。\n\n*【林梦儿好感度+20，总好感度达到50】*\n*【文采+10】*\n*【名声+20】*\n*【第一章结束】*"
+                }
+            },
+            'choice_A2': { // 剑走偏锋 -> 结局：曲高和寡
+                text: ["你决定不作寻常相思语，从家国天下的角度，写一首格局宏大的元夕感怀。", "你的诗词气势磅礴，引得一些忧国忧民之士的赞叹，却让场中大部分人感到有些沉重。"],
+                ending: { name: "结局：曲高和寡", text: "林梦儿的眼中闪过一丝敬佩，但更多的是距离感。她欣赏你的胸怀，却觉得你的世界与她的风花雪月格格不入。她对你遥遥一拜，未发一言便转身离去。\n\n你赢得了名士的尊重，却未能敲开佳人的心门。\n\n*【林梦儿好感度+5】*\n*【名声+25】*\n*【第一章结束】*" }
+            },
+            'choice_A3': { // 行险一搏 -> 结局：弄巧成拙
+                text: ["你心存侥幸，想起一首前朝大家不甚出名的遗作，稍作修改，据为己有。", "你的词句精妙，技惊四座，连林梦儿都向你投来欣赏的目光。"],
+                ending: { name: "结局：弄巧成拙", text: "正当你得意之时，台下一位老学究抚须摇头道：“此词意境虽好，却与前朝李大家的遗风太过相似，公子可知其详？”\n\n你顿时冷汗直流，支吾其词。林梦儿眼中的欣赏瞬间化为失望与鄙夷。抄袭是文人最大的耻辱。\n\n*【林梦儿好感度-50】*\n*【文采-20】*\n*【名声-30】*\n*【第一章结束】*" }
+            },
+
+            // --- 分支B: 英雄救美 ---
+            'branch_B': {
+                text: [
+                    "你敏锐地察觉到，人群的阴影处，有几个流里流气的地痞，正用淫邪的目光盯着林梦儿。",
+                    "他们交头接耳，一步步地向她靠近。林梦儿和她的丫鬟似乎还未察觉。",
+                    "这是一个机会，一个能让你以截然不同的方式登场的机会。"
+                ],
+                options: [
+                    { text: "武力震慑", nextNode: 'choice_B1' },
+                    { text: "巧言斥退", nextNode: 'choice_B2' },
+                    { text: "暗中示警", nextNode: 'choice_B3' }
+                ]
+            },
+            'choice_B1': { // 武力震慑 -> 结局：情根深种
+                text: [
+                    "你决定速战速决。你脱下青衫，露出劲装，挡在那几个地痞面前：“几位，看你们印堂发黑，今夜恐有血光之灾啊。”",
+                    "为首的地痞狞笑着伸手来推你。你眼中寒光一闪，扣住他的手腕顺势一扭，“咔嚓”一声，伴随着杀猪般的嚎叫，他的胳膊已经耷拉了下去。*【武力+5】*",
+                    "三两个呼吸的功夫，那几个地痞便全部躺在地上哀嚎不止。整个过程干脆利落，充满了暴力的美感。",
+                    "你拍了拍手上的灰尘，转身看向林梦儿。她那张绝美的脸上，写满了震惊与不可思议。*【林梦儿好感度+20】*",
+                    "“多……多谢公子出手相助。”她走上前来，对你盈盈一拜。",
+                    "你恢复书生模样，微笑道：“举手之劳。在下卫瑄，见不得这些腌臢之辈，扰了姑娘的雅兴。”",
+                    "“卫公子……”她轻声念着你的名字，一双美眸中异彩连连，“你……你真是个读书人？”",
+                    "你笑而不语。你们自然地走到了一起，在月湖边的小桥上，暧昧的气氛开始发酵。她对你的感觉，是混杂了崇拜、好奇与一丝丝畏惧的。",
+                    "当你握住她的手时，她的身体绷紧了，但眼神中却充满了期待。你凑近她，她没有闭眼，而是直直地看着你，仿佛要将你彻底看透。"
+                ],
+                ending: {
+                    name: "结局：情根深种",
+                    text: "你吻了上去，这是一个带着征服与占有意味的吻。她起初还在抗拒，但渐渐地，她的抵抗变成了无力的迎合。一种前所未有的刺激感贯穿了她的全身。\n\n你的手开始不满足，悄然上移，隔着衣料，覆上了她胸前那初具规模的柔软。她浑身一僵，口中发出一声压抑的呻吟。\n\n你适时地结束了这个吻，在她耳边低语：“现在，你相信我是个读书人了么？”\n\n她瘫软在你怀里，面色潮红，眼神迷离，过了许久才用细如蚊蚋的声音回答：“你……你是个坏人。” 但这声“坏人”，却充满了无限的娇嗔与依赖。\n\n*【林梦儿好感度+35，总好感度达到55】*\n*【武力+10】*\n*【名声+15】*\n*【第一章结束】*"
+                }
+            },
+            'choice_B2': { // 巧言斥退 -> 结局：心有灵犀
+                text: [
+                    "你决定用更聪明的方式。你装作不经意地走过去，高声道：“哎呀，这不是张捕头的表妹林姑娘吗？我刚还和张捕头喝酒呢，他说今晚要亲自带队巡街，最恨这些骚扰良家妇女的败类！”",
+                    "那几个地痞脸色“唰”地一下就白了。林梦儿冰雪聪明，立刻就明白了你的意图，眼中闪过一丝赞赏，顺着你的话柔声应道：“原来是卫大哥，我正要去找表哥呢。”",
+                    "地痞们灰溜溜地逃走了。一场危机，被你三言两语化解于无形。*【文采+10】* *【林梦儿好感度+25】*",
+                    "你深揖一躬，致歉道：“在下卫瑄，情急之下，冒认了姑娘，还望恕罪。”",
+                    "林梦儿莞尔一笑：“若非公子机智，小女子今日恐怕要多不少麻烦。小女子林梦儿，谢过卫公子解围之恩。”",
+                    "你展现出的智慧与沉稳，远比单纯的武力更能打动她。她主动邀请你同行，在小桥之上，暧昧滋生。当你试探性地靠近，她没有躲闪，反而眼中含着期待的笑意。"
+                ],
+                ending: {
+                    name: "结局：心有灵犀",
+                    text: "你轻轻地吻住了她，这是一个温柔而克制的吻，充满了尊重与珍视。她笨拙地学着你的样子，轻轻地回应。\n\n片刻之后，你主动退开。她却踮起脚尖，主动在你的唇上，又啄了一下，然后像受惊的小鹿一样，迅速地退开，红着脸不敢看你。\n\n这个吻虽然不激烈，却充满了灵犀相通的甜蜜。\n\n*【林梦儿好感度+30，总好感度达到55】*\n*【文采+15】*\n*【名声+10】*\n*【第一章结束】*"
+                }
+            },
+            'choice_B3': { // 暗中示警 -> 结局：无名之辈
+                text: [
+                    "你觉得亲自出面太过张扬，便决定借刀杀人。你悄悄观察，发现不远处就有林府的护卫。",
+                    "你悄悄绕到他们身后，压低声音说：“几位大哥，你们家小姐有麻烦了。”",
+                    "护卫们闻言大怒，立刻气势汹汹地冲了过去。一场单方面的殴打开始了，引来一片围观。",
+                    "你站在人群外，深藏功与名。"
+                ],
+                ending: {
+                    name: "结局：无名之辈",
+                    text: "你成功地保护了林梦儿，却没有让她知道你的存在。你避免了风险，也错失了机会。\n\n今夜的你，对她而言，只是一个模糊的背影，甚至连背影都算不上。你们的故事，在开始之前，就已经结束了。\n\n*【林梦儿好感度+0】*\n*【第一章结束】*"
+                }
+            },
+
+            // --- 分支C: 不期而遇 ---
+            'branch_C': {
+                text: [
+                    "你决定用更直接，也更考验技巧的方式。你端起一碗热气腾腾的元宵，算准了路线，装作被人潮挤了一下，踉跄着向她撞去。",
+                    "你的时机和力道都掌握得恰到好处。有几滴汤汁，精准地溅在了林梦儿月白色的裙摆上。",
+                    "“对不起，对不起！”你立刻丢下碗，手忙脚乱地道歉，脸上装出十足的惶恐与歉意。",
+                    "林梦儿被这突如其来的意外弄得一愣，她低头看了看自己的裙子，又看了看你狼狈的样子，眉毛微微皱了起来。"
+                ],
+                options: [
+                    { text: "诚恳赔偿", nextNode: 'choice_C1' },
+                    { text: "花言巧语", nextNode: 'choice_C2' },
+                    { text: "卖弄文采", nextNode: 'choice_C3' }
+                ]
+            },
+            'choice_C1': { // 诚恳赔偿 -> 结局：攻略失败
+                text: ["你诚恳地说：“姑娘，是在下的过错。这件衣服，无论多少钱，在下都愿意赔偿。”"],
+                ending: {
+                    name: "结局：攻略失败",
+                    text: "林梦儿客气地点点头：“不必了，小事一桩。”\n\n然后，她会带着丫鬟，礼貌而疏远地离开。你虽然表现得像个正人君子，却也因此失去了所有继续接触的机会。你对她而言，只是一个不小心弄脏了她衣服的倒霉路人。\n\n*【林梦儿好感度-5】*\n*【第一章结束】*"
+                }
+            },
+            'choice_C2': { // 花言巧语 -> 结局：攻略失败
+                text: ["你嬉皮笑脸地说：“哎呀，姑娘真是人美心善。这点污渍，就如同白玉微瑕，更添几分自然之美。您一定不会和我这等粗人计较吧？”"],
+                ending: {
+                    name: "结局：攻略失败",
+                    text: "这种市井之徒的轻浮腔调，立刻引起林梦儿的反感。她的俏脸会瞬间冷下来，眼中充满鄙夷。\n\n“登徒子！”她会冷冷地吐出三个字，然后拂袖而去。周围的百姓也会对你指指点点，让你颜面尽失。\n\n*【林梦儿好感度-30】*\n*【名声-20】*\n*【第一章结束】*"
+                }
+            },
+            'choice_C3': { // 卖弄文采 -> 结局：弄巧成拙的温柔乡
+                text: [
+                    "你选择了最冒险的方式。你对着她长揖不起，口中念念有词：“罪过，罪过！在下无心之失，竟污了仙子霓裳。只恨不能化作那东流水，涤尽这裙上尘埃，还姑娘一片皎洁。请姑娘责罚！”",
+                    "你这番半文半白的表演，让周围的人都看呆了。但林梦儿本人，却被你逗笑了。*【林梦儿好感度+15】*",
+                    "“这位公子，快请起吧。”她虚扶了你一下，“你这又是‘仙子’又是‘东流水’的，倒让小女子不好意思了。”",
+                    "你顺势起身：“在下卫瑄，敢问姑娘芳名？改日定当登门谢罪。”",
+                    "“我叫林梦儿。”她大方地报上姓名，“谢罪就不必了，卫公子若是有心，不如……陪我猜一猜那边的灯谜如何？就当是赔罪了。”",
+                    "这意外的转折让你喜出望外。你们在灯谜台前，配合默契，碰撞出耀眼的火花。当你们走到月湖小桥上时，她对你的好感，已经从“有趣”，变成了真正的“欣赏”。",
+                    "你看着她动人的侧脸，情不自禁地握住了她的手。她象征性地挣扎了一下，便任由你握着。你缓缓靠近，她的心跳声，你仿佛都能听见。"
+                ],
+                ending: {
+                    name: "结局：弄巧成拙的温柔乡",
+                    text: "你成功地吻到了她，这是一个带着欢喜与试探的吻。当你的唇触碰到她的唇时，你们俩都忍不住笑了一下，仿佛在回味刚才那场“弄巧成拙”的相遇。\n\n笑意让这个吻变得格外轻松而甜蜜。你将她拥入怀中，加深了这个吻。这一次，不再是玩闹，而是充满了真实的欲望与情感。这个由一个玩笑开始的夜晚，最终以一个深情的吻，画上了圆满的句号。\n\n*【林梦儿好感度+35，总好感度达到50】*\n*【文采+10】*\n*【第一章结束】*"
+                }
+            }
+        };
+
+        // --- 全局变量和DOM引用 ---
+        const storyContainer = document.getElementById('story-container');
+        const restartContainer = document.getElementById('restart-container');
+        const restartButton = document.getElementById('restart-button');
+
+        let userChoices = []; 
+        let isProcessing = false;
+
+        // --- 核心功能函数 ---
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+        
+        function scrollToBottom() {
+            window.scrollTo({
+                top: document.body.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+
+        async function displayText(lines) {
+            isProcessing = true;
+            for (const line of lines) {
+                const p = document.createElement('p');
+                p.className = 'text-line';
+                p.textContent = line;
+                storyContainer.appendChild(p);
+                
+                await delay(50);
+                p.classList.add('visible');
+                scrollToBottom();
+
+                await delay(1500);
+            }
+            isProcessing = false;
+        }
+
+        async function displayOptions(options) {
+            if (!options || options.length === 0) return;
+
+            const optionsContainer = document.createElement('div');
+            optionsContainer.className = 'options-container';
+
+            const availableOptions = options.filter(option => {
+                if (!option.requiredState) return true;
+                return option.requiredState.every(req => {
+                    if (req.startsWith('!')) {
+                        return !userChoices.includes(req.substring(1));
+                    }
+                    return userChoices.includes(req);
+                });
+            });
+
+            if(availableOptions.length === 0) {
+                console.warn("No available options for this node. This might be a dead end.");
+                return;
+            }
+
+            availableOptions.forEach(optionData => {
+                const optionEl = document.createElement('div');
+                optionEl.className = 'option';
+                optionEl.textContent = optionData.text;
+                optionEl.addEventListener('click', () => handleOptionClick(optionData, optionEl, optionsContainer), { once: true });
+                optionsContainer.appendChild(optionEl);
+            });
+
+            storyContainer.appendChild(optionsContainer);
+            await delay(50);
+            optionsContainer.classList.add('visible');
+            scrollToBottom();
+        }
+
+        function handleOptionClick(chosenOption, chosenElement, container) {
+            if (isProcessing) return;
+            isProcessing = true;
+
+            if (chosenOption.choiceCode) {
+                if (!userChoices.includes(chosenOption.choiceCode)) {
+                    userChoices.push(chosenOption.choiceCode);
+                }
+            }
+
+            const allOptions = container.querySelectorAll('.option');
+            allOptions.forEach(opt => {
+                if (opt !== chosenElement) {
+                    opt.classList.add('fading-out');
+                } else {
+                    opt.classList.add('selected-option');
+                }
+                opt.style.cursor = 'default';
+            });
+            
+            scrollToBottom();
+            setTimeout(() => {
+                 loadNode(chosenOption.nextNode);
+            }, 400);
+        }
+
+        async function displayEnding(endingData) {
+            await delay(1000);
+
+            const endingBlock = document.createElement('div');
+            endingBlock.className = 'ending-block text-line';
+            
+            const title = document.createElement('div');
+            title.className = 'ending-title';
+            title.textContent = endingData.name;
+            
+            const text = document.createElement('p');
+            text.className = 'ending-text';
+            text.textContent = endingData.text;
+
+            endingBlock.appendChild(title);
+            endingBlock.appendChild(text);
+            storyContainer.appendChild(endingBlock);
+
+            await delay(50);
+            endingBlock.classList.add('visible');
+            
+            restartContainer.classList.add('visible');
+            scrollToBottom();
+        }
+
+        async function loadNode(nodeId) {
+            if (!nodeId) return;
+            const nodeData = storyData[nodeId];
+            if (!nodeData) {
+                console.error(`Error: Cannot find node with ID "${nodeId}".`);
+                return;
+            }
+
+            isProcessing = true;
+
+            if (nodeData.text) {
+                await displayText(nodeData.text);
+            }
+            
+            if (nodeData.ending) {
+                await displayEnding(nodeData.ending);
+            } else {
+                await displayOptions(nodeData.options);
+            }
+            
+            isProcessing = false;
+        }
+
+        function startGame() {
+            isProcessing = true;
+            storyContainer.style.transition = 'opacity 0.5s ease-out';
+            storyContainer.style.opacity = '0';
+            restartContainer.classList.remove('visible');
+
+            setTimeout(() => {
+                storyContainer.innerHTML = '';
+                storyContainer.style.opacity = '1';
+                userChoices = [];
+                loadNode('start');
+            }, 500);
+        }
+
+        // --- 事件监听 ---
+        restartButton.addEventListener('click', startGame);
+
+        // --- 游戏开始 ---
+        window.onload = startGame;
+    </script>
+</body>
+</html>
